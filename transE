@@ -60,5 +60,24 @@ class TransE:
         self.norm = norm
 
     def data_initialise(self):
+        entityVectorList = {}
+        relationVectorList = {}
+        for entity in self.entities:
+            entity_vector = np.random.uniform(-6.0/np.sqrt(self.dimension), 6.0/np.sqrt(self.dimension), self.dimension)
+            entityVectorList[entity] = entity_vector
 
-    def training_run()
+        for relation in self.relations:
+            relation_vector = np.random.uniform(-6.0/np.sqrt(self.dimension), 6.0/np.sqrt(self.dimension), self.dimension)
+            relation_vector = self.normalization(relation_vector)
+            relationVectorList[relation] = relation_vector
+
+        entities = entityVectorList
+        relations = relationVectorList
+
+    def  normalization(self, vector):
+         return vector / np.linalg.norm(vector)
+
+
+    def training_run(self, epochs = 1000, batch_size = 100):
+
+        for epoch in range(epochs):
