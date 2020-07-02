@@ -1,0 +1,64 @@
+import codecs
+import numpy as np
+import maths
+
+entities2vec = {}
+relations2vec = {}
+
+def dataloader(file):
+    file1 = file + "train.txt"
+    file2 = file + "entity2id.txt"
+    file3 = file + "relation2id.txt"
+
+    with open(file2, 'r') as f1, open(file3, 'r') as f2:
+        lines1 = f1.readlines()
+        lines2 = f2.readlines()
+        for line in lines1:
+            line = line.strip().split('\t')
+            if len(line) != 2:
+                continue
+            entities2vec[line[0]] = line[1]
+
+        for line in lines2:
+            line = line.strip().split('\t')
+            if len(line) != 2:
+                continue
+            relations2vec[line[0]] = line[1]
+
+    entity_set = set()
+    relation_set = set()
+    triple_list = []
+
+    with codecs.open(file1, 'r') as f:
+        content = f.readlines()
+        for line in content:
+            triple = line.strip().split("\t")
+            if len(triple) != 3:
+                continue
+
+            h_ = entities2vec[triple[0]]
+            t_ = entities2vec[triple[1]]
+            r_ = relations2vec[triple[2]]
+
+            triple_list.append([h_,t_,r_])
+
+            entity_set.add(h_)
+            entity_set.add(t_)
+
+            relation_set.add(r_)
+
+    return entity_set, relation_set, triple_list
+
+class TransE:
+    def __init__(self, entity_set, relation_set, triple_list, embedding_dim=50, lr=0.01, margin=1.0, norm=1):
+        self.entities = entity_set
+        self.relations = relation_set
+        self.triples = triple_list
+        self.dimension = embedding_dim
+        self.learning_rate = lr
+        self.margin = margin
+        self.norm = norm
+
+    def data_initialise(self):
+
+    def training_run()
