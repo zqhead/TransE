@@ -3,9 +3,9 @@ import numpy as np
 import copy
 import time
 import random
-
-entities2vec = {}
-relations2vec = {}
+import random
+entities2id = {}
+relations2id = {}
 
 
 def dataloader(file):
@@ -20,13 +20,13 @@ def dataloader(file):
             line = line.strip().split('\t')
             if len(line) != 2:
                 continue
-            entities2vec[line[0]] = line[1]
+            entities2id[line[0]] = line[1]
 
         for line in lines2:
             line = line.strip().split('\t')
             if len(line) != 2:
                 continue
-            relations2vec[line[0]] = line[1]
+            relations2id[line[0]] = line[1]
 
     entity_set = set()
     relation_set = set()
@@ -39,9 +39,9 @@ def dataloader(file):
             if len(triple) != 3:
                 continue
 
-            h_ = entities2vec[triple[0]]
-            t_ = entities2vec[triple[1]]
-            r_ = relations2vec[triple[2]]
+            h_ = entities2id[triple[0]]
+            t_ = entities2id[triple[1]]
+            r_ = relations2id[triple[2]]
 
             triple_list.append([h_, t_, r_])
 
@@ -92,7 +92,7 @@ class TransE:
     def normalization(self, vector):
         return vector / np.linalg.norm(vector)
 
-    def training_run(self, epochs=1000, nbatches=400):
+    def training_run(self, epochs=1000, nbatches=100):
 
         batch_size = int(len(self.triples) / nbatches)
         print("batch size: ", batch_size)
@@ -104,6 +104,7 @@ class TransE:
                 self.entities[entity] = self.normalization(self.entities[entity]);
 
             for batch in range(nbatches):
+                start1 = time.time()
                 #
                 # if batch == nbatches - 1:
                 #     batch_samples = self.triples[batch * batch_size:]
@@ -118,29 +119,23 @@ class TransE:
                     pr = np.random.random(1)[0]
                     if pr > 0.5:
                         # change the head entity
-                        # headindex = np.random.choice(len(self.entities.keys()), size=1, replace=False)[0]
-                        # corrupted_sample[0] = self.entities.keys()[headindex]
-                        # while corrupted_sample in self.triples: # 防止生成的反例为triples中的其他三元组
-                        #     headindex = np.random.choice(len(self.entities.keys()), size=1, replace=False)[0]
-                        #     corrupted_sample[0] = self.entities.keys()[headindex]
-
-                        corrupted_sample[0] = random.choice(list(self.entities.keys()))
-                        while corrupted_sample in self.triples:  # 防止生成的反例为triples中的其他三元组
-                            corrupted_sample[0] = random.choice(list(self.entities.keys()))
+                        corrupted_sample[0] = random.sample(self.entities.keys(), 1)[0]
+                        while corrupted_sample[0] == sample[0]:  # 防止生成的反例为triples中的其他三元组
+                            corrupted_sample[0] = random.sample(self.entities.keys(), 1)[0]
                     else:
                         # change the tail entity
-                        # tailindex = np.random.choice(len(self.entities.keys()), size=1, replace=False)[0]
-                        # corrupted_sample[0] = self.entities.keys()[tailindex]
-                        # while corrupted_sample in self.triples:  # 防止生成的反例为triples中的其他三元组
-                        #     tailindex = np.random.choice(len(self.entities.keys()), size=1, replace=False)[0]
-                        #     corrupted_sample[0] = self.entities.keys()[tailindex]
-                        corrupted_sample[1] = random.choice(list(self.entities.keys()))
-                        while corrupted_sample in self.triples:  # 防止生成的反例为triples中的其他三元组
-                            corrupted_sample[1] = random.choice(list(self.entities.keys()))
+                        corrupted_sample[1] = random.sample(self.entities.keys(), 1)[0]
+                        while corrupted_sample[1] == sample[1]: :  # 防止生成的反例为triples中的其他三元组
+                            corrupted_sample[1] = random.sample(self.entities.keys(), 1)[0]
+
                     if (sample, corrupted_sample) not in Tbatch:
                         Tbatch.append((sample, corrupted_sample))
+                    # end = time.time()
+                    # print("epoch: ", len(Tbatch), "cost time: %s" % (round((end - start), 3)))
 
                 self.update_triple_embedding(Tbatch)
+                end1 = time.time()
+                print("epoch: ", epoch, "cost time: %s" % (round((end1 - start1), 3)))
             end = time.time()
             print("epoch: ", epoch, "cost time: %s" % (round((end - start), 3)))
             print("running loss: ", self.loss)
@@ -220,7 +215,7 @@ class TransE:
                     corrupted_copy_head -= -1 * self.learning_rate * corrupted_gradient
                     correct_copy_tail -= self.learning_rate * corrupted_gradient
 
-                # normalise these new embedding vector, instead of all the embedding together
+                # normalising these new embedding vector, instead of normalising all the embedding together
                 copy_entity[correct_sample[0]] = self.normalization(correct_copy_head)
                 copy_entity[correct_sample[1]] = self.normalization(correct_copy_tail)
                 if correct_sample[0] == corrupted_sample[0]:
