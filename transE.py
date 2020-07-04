@@ -3,12 +3,13 @@ import numpy as np
 import copy
 import time
 import random
-import random
+
 entities2id = {}
 relations2id = {}
 
 
 def dataloader(file):
+    print("load file...")
     file1 = file + "train.txt"
     file2 = file + "entity2id.txt"
     file3 = file + "relation2id.txt"
@@ -49,6 +50,8 @@ def dataloader(file):
             entity_set.add(t_)
 
             relation_set.add(r_)
+    print("Complete load. entity : %d , relation : %d , triple : %d" % (
+    len(entity_set), len(relation_set), len(triple_list)))
 
     return entity_set, relation_set, triple_list
 
@@ -92,7 +95,7 @@ class TransE:
     def normalization(self, vector):
         return vector / np.linalg.norm(vector)
 
-    def training_run(self, epochs=1000, nbatches=100):
+    def training_run(self, epochs=100, nbatches=100):
 
         batch_size = int(len(self.triples) / nbatches)
         print("batch size: ", batch_size)
@@ -104,7 +107,6 @@ class TransE:
                 self.entities[entity] = self.normalization(self.entities[entity]);
 
             for batch in range(nbatches):
-                start1 = time.time()
                 #
                 # if batch == nbatches - 1:
                 #     batch_samples = self.triples[batch * batch_size:]
@@ -134,20 +136,18 @@ class TransE:
                     # print("epoch: ", len(Tbatch), "cost time: %s" % (round((end - start), 3)))
 
                 self.update_triple_embedding(Tbatch)
-                end1 = time.time()
-                print("epoch: ", epoch, "cost time: %s" % (round((end1 - start1), 3)))
             end = time.time()
             print("epoch: ", epoch, "cost time: %s" % (round((end - start), 3)))
             print("running loss: ", self.loss)
 
-        with codecs.open("entity_"+self.dimension+"dim_batch"+batch_size, "w") as f1:
+        with codecs.open("entity_" + str(self.dimension) + "dim_batch" + str(batch_size), "w") as f1:
 
             for e in self.entities.keys():
                 f1.write(e + "\t")
                 f1.write(str(list(self.entities[e])))
                 f1.write("\n")
 
-        with codecs.open("relation"+self.dimension+"dim_batch"+batch_size, "w", "w") as f2:
+        with codecs.open("relation" + str(self.dimension) + "dim_batch" + str(batch_size), "w") as f2:
             for r in self.relations.keys():
                 f2.write(r + "\t")
                 f2.write(str(list(self.relations[r])))
@@ -155,7 +155,7 @@ class TransE:
 
     def update_triple_embedding(self, Tbatch):
         # deepcopy 可以保证，即使list嵌套list也能让各层的地址不同， 即这里copy_entity 和
-        # entitles中所有的entities都不同
+        # entitles中所有的elements都不同
         copy_entity = copy.deepcopy(self.entities)
         copy_relation = copy.deepcopy(self.relations)
 
@@ -203,8 +203,8 @@ class TransE:
                         else:
                             corrupted_gradient[i] = -1
 
-                correct_copy_head -= self.learning_rate*correct_gradient
-                relation_copy -= self.learning_rate*correct_gradient
+                correct_copy_head -= self.learning_rate * correct_gradient
+                relation_copy -= self.learning_rate * correct_gradient
                 correct_copy_tail -= -1 * self.learning_rate * correct_gradient
 
                 relation_copy -= -1 * self.learning_rate * corrupted_gradient
@@ -232,20 +232,10 @@ class TransE:
         self.relations = copy_relation
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     file1 = "FB15k\\"
     entity_set, relation_set, triple_list = dataloader(file1)
-    print("load file...")
-    print("Complete load. entity : %d , relation : %d , triple : %d" % (len(entity_set),len(relation_set),len(triple_list)))
 
-    transE = TransE(entity_set, relation_set, triple_list)
+    transE = TransE(entity_set, relation_set, triple_list, embedding_dim=50, lr=0.01, margin=1.0, norm=1)
     transE.data_initialise()
     transE.training_run()
-
-
-
-
-
-
-
-
