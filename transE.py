@@ -125,7 +125,7 @@ class TransE:
                     else:
                         # change the tail entity
                         corrupted_sample[1] = random.sample(self.entities.keys(), 1)[0]
-                        while corrupted_sample[1] == sample[1]: :  # 防止生成的反例为triples中的其他三元组
+                        while corrupted_sample[1] == sample[1]:  # 防止生成的反例为triples中的其他三元组
                             corrupted_sample[1] = random.sample(self.entities.keys(), 1)[0]
 
                     if (sample, corrupted_sample) not in Tbatch:
