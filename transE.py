@@ -107,12 +107,6 @@ class TransE:
                 self.entities[entity] = self.normalization(self.entities[entity]);
 
             for batch in range(nbatches):
-                #
-                # if batch == nbatches - 1:
-                #     batch_samples = self.triples[batch * batch_size:]
-                # else:
-                #     batch_samples = self.triples[batch * batch_size: batch * batch_size + batch_size]
-
                 batch_samples = random.sample(self.triples, batch_size)
 
                 Tbatch = []
@@ -122,18 +116,16 @@ class TransE:
                     if pr > 0.5:
                         # change the head entity
                         corrupted_sample[0] = random.sample(self.entities.keys(), 1)[0]
-                        while corrupted_sample[0] == sample[0]:  # 防止生成的反例为triples中的其他三元组
+                        while corrupted_sample[0] == sample[0]:
                             corrupted_sample[0] = random.sample(self.entities.keys(), 1)[0]
                     else:
                         # change the tail entity
                         corrupted_sample[1] = random.sample(self.entities.keys(), 1)[0]
-                        while corrupted_sample[1] == sample[1]:  # 防止生成的反例为triples中的其他三元组
+                        while corrupted_sample[1] == sample[1]:
                             corrupted_sample[1] = random.sample(self.entities.keys(), 1)[0]
 
                     if (sample, corrupted_sample) not in Tbatch:
                         Tbatch.append((sample, corrupted_sample))
-                    # end = time.time()
-                    # print("epoch: ", len(Tbatch), "cost time: %s" % (round((end - start), 3)))
 
                 self.update_triple_embedding(Tbatch)
             end = time.time()
@@ -209,9 +201,11 @@ class TransE:
 
                 relation_copy -= -1 * self.learning_rate * corrupted_gradient
                 if correct_sample[0] == corrupted_sample[0]:
+                    # if corrupted_triples replaces the tail entity, the head entity's embedding need to be updated twice
                     correct_copy_head -= -1 * self.learning_rate * corrupted_gradient
                     corrupted_copy_tail -= self.learning_rate * corrupted_gradient
                 elif correct_sample[1] == corrupted_sample[1]:
+                    # if corrupted_triples replaces the head entity, the tail entity's embedding need to be updated twice
                     corrupted_copy_head -= -1 * self.learning_rate * corrupted_gradient
                     correct_copy_tail -= self.learning_rate * corrupted_gradient
 
