@@ -139,7 +139,7 @@ class TransE:
                 f1.write(str(list(self.entities[e])))
                 f1.write("\n")
 
-        with codecs.open("relation" + str(self.dimension) + "dim_batch" + str(batch_size), "w") as f2:
+        with codecs.open("relation_" + str(self.dimension) + "dim_batch" + str(batch_size), "w") as f2:
             for r in self.relations.keys():
                 f2.write(r + "\t")
                 f2.write(str(list(self.relations[r])))
