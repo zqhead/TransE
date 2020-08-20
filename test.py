@@ -77,9 +77,9 @@ class testTransE:
                 if self.filter:
                     if head_triple in self.train_triples:
                         continue
-                head_embedding = self.entities[entity]
-                tail_embedding = self.entities[triple[1]]
-                relation_embedding = self.relations[triple[2]]
+                head_embedding = self.entities[head_triple[0]]
+                tail_embedding = self.entities[head_triple[1]]
+                relation_embedding = self.relations[head_triple[2]]
                 distance = self.distance(head_embedding, relation_embedding, tail_embedding)
                 rank_head_dict[tuple(head_triple)] = distance
 
@@ -92,7 +92,7 @@ class testTransE:
                 tail_embedding = self.entities[tail_triple[1]]
                 relation_embedding = self.relations[tail_triple[2]]
                 distance = self.distance(head_embedding, relation_embedding, tail_embedding)
-                rank_tail_dict[tuple(head_triple)] = distance
+                rank_tail_dict[tuple(tail_triple)] = distance
 
             # itemgetter 返回一个可调用对象，该对象可以使用操作__getitem__()方法从自身的操作中捕获item
             # 使用itemgetter()从元组记录中取回特定的字段 搭配sorted可以将dictionary根据value进行排序
