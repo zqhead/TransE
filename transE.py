@@ -8,12 +8,11 @@ entities2id = {}
 relations2id = {}
 
 
-def dataloader(file):
+def dataloader(file1, file2, file3):
     print("load file...")
-    file1 = file + "train.txt"
-    file2 = file + "entity2id.txt"
-    file3 = file + "relation2id.txt"
 
+    entity = []
+    relation = []
     with open(file2, 'r') as f1, open(file3, 'r') as f2:
         lines1 = f1.readlines()
         lines2 = f2.readlines()
@@ -22,15 +21,16 @@ def dataloader(file):
             if len(line) != 2:
                 continue
             entities2id[line[0]] = line[1]
+            entity.append(line[1])
 
         for line in lines2:
             line = line.strip().split('\t')
             if len(line) != 2:
                 continue
             relations2id[line[0]] = line[1]
+            relation.append(line[1])
 
-    entity_set = set()
-    relation_set = set()
+
     triple_list = []
 
     with codecs.open(file1, 'r') as f:
@@ -41,19 +41,16 @@ def dataloader(file):
                 continue
 
             h_ = entities2id[triple[0]]
-            t_ = entities2id[triple[1]]
-            r_ = relations2id[triple[2]]
+            r_ = relations2id[triple[1]]
+            t_ = entities2id[triple[2]]
 
-            triple_list.append([h_, t_, r_])
 
-            entity_set.add(h_)
-            entity_set.add(t_)
+            triple_list.append([h_, r_, t_])
 
-            relation_set.add(r_)
     print("Complete load. entity : %d , relation : %d , triple : %d" % (
-    len(entity_set), len(relation_set), len(triple_list)))
+    len(entity), len(relation), len(triple_list)))
 
-    return entity_set, relation_set, triple_list
+    return entity, relation, triple_list
 
 
 def norm_l1(h, r, t):
@@ -65,9 +62,9 @@ def norm_l2(h, r, t):
 
 
 class TransE:
-    def __init__(self, entity_set, relation_set, triple_list, embedding_dim=50, lr=0.01, margin=1.0, norm=1):
-        self.entities = entity_set
-        self.relations = relation_set
+    def __init__(self, entity, relation, triple_list, embedding_dim=50, lr=0.01, margin=1.0, norm=1):
+        self.entities = entity
+        self.relations = relation
         self.triples = triple_list
         self.dimension = embedding_dim
         self.learning_rate = lr
@@ -95,7 +92,7 @@ class TransE:
     def normalization(self, vector):
         return vector / np.linalg.norm(vector)
 
-    def training_run(self, epochs=100, nbatches=100):
+    def training_run(self, epochs=1, nbatches=100, out_file_title = ''):
 
         batch_size = int(len(self.triples) / nbatches)
         print("batch size: ", batch_size)
@@ -120,9 +117,9 @@ class TransE:
                             corrupted_sample[0] = random.sample(self.entities.keys(), 1)[0]
                     else:
                         # change the tail entity
-                        corrupted_sample[1] = random.sample(self.entities.keys(), 1)[0]
-                        while corrupted_sample[1] == sample[1]:
-                            corrupted_sample[1] = random.sample(self.entities.keys(), 1)[0]
+                        corrupted_sample[2] = random.sample(self.entities.keys(), 1)[0]
+                        while corrupted_sample[2] == sample[2]:
+                            corrupted_sample[2] = random.sample(self.entities.keys(), 1)[0]
 
                     if (sample, corrupted_sample) not in Tbatch:
                         Tbatch.append((sample, corrupted_sample))
@@ -132,14 +129,14 @@ class TransE:
             print("epoch: ", epoch, "cost time: %s" % (round((end - start), 3)))
             print("running loss: ", self.loss)
 
-        with codecs.open("entity_" + str(self.dimension) + "dim_batch" + str(batch_size), "w") as f1:
+        with codecs.open(out_file_title +"TransE_entity_" + str(self.dimension) + "dim_batch" + str(batch_size), "w") as f1:
 
             for e in self.entities.keys():
                 f1.write(e + "\t")
                 f1.write(str(list(self.entities[e])))
                 f1.write("\n")
 
-        with codecs.open("relation_" + str(self.dimension) + "dim_batch" + str(batch_size), "w") as f2:
+        with codecs.open(out_file_title +"TransE_relation_" + str(self.dimension) + "dim_batch" + str(batch_size), "w") as f2:
             for r in self.relations.keys():
                 f2.write(r + "\t")
                 f2.write(str(list(self.relations[r])))
@@ -154,18 +151,18 @@ class TransE:
         for correct_sample, corrupted_sample in Tbatch:
 
             correct_copy_head = copy_entity[correct_sample[0]]
-            correct_copy_tail = copy_entity[correct_sample[1]]
-            relation_copy = copy_relation[correct_sample[2]]
+            correct_copy_tail = copy_entity[correct_sample[2]]
+            relation_copy = copy_relation[correct_sample[1]]
 
             corrupted_copy_head = copy_entity[corrupted_sample[0]]
-            corrupted_copy_tail = copy_entity[corrupted_sample[1]]
+            corrupted_copy_tail = copy_entity[corrupted_sample[2]]
 
             correct_head = self.entities[correct_sample[0]]
-            correct_tail = self.entities[correct_sample[1]]
-            relation = self.relations[correct_sample[2]]
+            correct_tail = self.entities[correct_sample[2]]
+            relation = self.relations[correct_sample[1]]
 
             corrupted_head = self.entities[corrupted_sample[0]]
-            corrupted_tail = self.entities[corrupted_sample[1]]
+            corrupted_tail = self.entities[corrupted_sample[2]]
 
             # calculate the distance of the triples
             if self.norm == 1:
@@ -204,32 +201,38 @@ class TransE:
                     # if corrupted_triples replaces the tail entity, the head entity's embedding need to be updated twice
                     correct_copy_head -= -1 * self.learning_rate * corrupted_gradient
                     corrupted_copy_tail -= self.learning_rate * corrupted_gradient
-                elif correct_sample[1] == corrupted_sample[1]:
+                elif correct_sample[2] == corrupted_sample[2]:
                     # if corrupted_triples replaces the head entity, the tail entity's embedding need to be updated twice
                     corrupted_copy_head -= -1 * self.learning_rate * corrupted_gradient
                     correct_copy_tail -= self.learning_rate * corrupted_gradient
 
                 # normalising these new embedding vector, instead of normalising all the embedding together
                 copy_entity[correct_sample[0]] = self.normalization(correct_copy_head)
-                copy_entity[correct_sample[1]] = self.normalization(correct_copy_tail)
+                copy_entity[correct_sample[2]] = self.normalization(correct_copy_tail)
                 if correct_sample[0] == corrupted_sample[0]:
                     # if corrupted_triples replace the tail entity, update the tail entity's embedding
-                    copy_entity[corrupted_sample[1]] = self.normalization(corrupted_copy_tail)
-                elif correct_sample[1] == corrupted_sample[1]:
+                    copy_entity[corrupted_sample[2]] = self.normalization(corrupted_copy_tail)
+                elif correct_sample[2] == corrupted_sample[2]:
                     # if corrupted_triples replace the head entity, update the head entity's embedding
                     copy_entity[corrupted_sample[0]] = self.normalization(corrupted_copy_head)
                 # the paper mention that the relation's embedding don't need to be normalised
-                copy_relation[correct_sample[2]] = relation_copy
-                # copy_relation[correct_sample[2]] = self.normalization(relation_copy)
+                copy_relation[correct_sample[1]] = relation_copy
+                # copy_relation[correct_sample[1]] = self.normalization(relation_copy)
 
         self.entities = copy_entity
         self.relations = copy_relation
 
 
 if __name__ == '__main__':
-    file1 = "FB15k\\"
-    entity_set, relation_set, triple_list = dataloader(file1)
+    # file1 = "FB15k\\train.txt"
+    # file2 = "FB15k\\entity2id.txt"
+    # file3 = "FB15k\\relation2id.txt"
 
-    transE = TransE(entity_set, relation_set, triple_list, embedding_dim=50, lr=0.01, margin=1.0, norm=1)
+    file1 = "WN18\\wordnet-mlj12-train.txt"
+    file2 = "WN18\\entity2id.txt"
+    file3 = "WN18\\relation2id.txt"
+    entity_set, relation_set, triple_list = dataloader(file1, file2, file3)
+
+    transE = TransE(entity_set, relation_set, triple_list, embedding_dim=50, lr=0.01, margin=1.0, norm=2)
     transE.data_initialise()
-    transE.training_run()
+    transE.training_run(out_file_title="WN18_")
