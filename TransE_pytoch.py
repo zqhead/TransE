@@ -328,8 +328,17 @@ class TransE:
                     pr = np.random.random(1)[0]
                     p = relation_tph[int(corrupted_sample[1])] / (
                             relation_tph[int(corrupted_sample[1])] + relation_hpt[int(corrupted_sample[1])])
-
-                    if pr > p:
+                    '''
+                    这里关于p的说明 tph 表示每一个头结对应的平均尾节点数 hpt 表示每一个尾节点对应的平均头结点数
+                    当tph > hpt 时 更倾向于替换头 反之则跟倾向于替换尾实体
+                    
+                    举例说明 
+                    在一个知识图谱中，一共有10个实体 和n个关系，如果其中一个关系使两个头实体对应五个尾实体，
+                    那么这些头实体的平均 tph为2.5，而这些尾实体的平均 hpt只有0.4，
+                    则此时我们更倾向于替换头实体，
+                    因为替换头实体才会有更高概率获得正假三元组，如果替换头实体，获得正假三元组的概率为 8/9 而替换尾实体获得正假三元组的概率只有 5/9
+                    '''
+                    if pr < p:
                         # change the head entity
                         corrupted_sample[0] = random.sample(self.entities, 1)[0]
                         while corrupted_sample[0] == sample[0]:
